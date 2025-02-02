@@ -93,9 +93,10 @@ func decryptCredentials(file string) (map[string]creds, error) {
 
 	dec := make([]byte, len(raw))
 	mode.CryptBlocks(dec, raw)
+	dec = dec[sz : len(dec)-iif(runtime.GOOS == "windows", sz/2, sz-1)]
 
 	var res map[string]creds
-	if err := json.Unmarshal(dec[sz:len(dec)-sz/2], &res); err != nil {
+	if err := json.Unmarshal(dec, &res); err != nil {
 		return nil, err
 	}
 
