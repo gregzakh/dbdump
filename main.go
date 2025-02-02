@@ -9,9 +9,28 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 )
+
+type creds struct {
+	Connection struct {
+		User     string `json:"user"`
+		Password string `json:"password"`
+	} `json:"#connection"`
+}
+
+type connection struct {
+	Name   string `json:"name"`
+	Config struct {
+		Host string `json:"host"`
+		Port string `json:"port"`
+		Data string `json:"database"`
+	} `json:"configuration"`
+}
+
+type datas struct {
+	Connections map[string]connection `json:"connections"`
+}
 
 func getPathPoints() map[string][]string {
 	return map[string][]string{
@@ -44,26 +63,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	rex := regexp.MustCompile("^(aut|clo|con|pro|typ|url)")
-	for marker, cons := range data["connections"].(map[string]interface{}) {
-		usr := cred[marker].(map[string]interface{})["#connection"]
-		cfg := cons.(map[string]interface{})["configuration"].(map[string]interface{})
-
-		for k, v := range cfg {
-			if rex.MatchString(k) {
-				continue
-			}
-			fmt.Printf("%-13s: %s\n", k, v)
-		}
-
-		for k, v := range usr.(map[string]interface{}) {
-			fmt.Printf("%-13s: %s\n", k, v)
-		}
-		fmt.Println()
+	for name, cons := range data.Connections {
+		fmt.Printf("Name: %s\nHost: %s\nData: %s\nUser: %s\nPass: %s\n\n",
+			cons.Name, cons.Config.Host, cons.Config.Data,
+			cred[name].Connection.User, cred[name].Connection.Password,
+		)
 	}
 }
 
-func decryptCredentials(file string) (map[string]interface{}, error) {
+func decryptCredentials(file string) (map[string]creds, error) {
 	key, err := hex.DecodeString("babb4a9f774ab853c96c2d653dfe544a")
 	if err != nil {
 		return nil, err
@@ -86,26 +94,26 @@ func decryptCredentials(file string) (map[string]interface{}, error) {
 	dec := make([]byte, len(raw))
 	mode.CryptBlocks(dec, raw)
 
-	var res map[string]interface{}
-	if err := json.Unmarshal(dec[sz:len(dec)-sz+1], &res); err != nil {
+	var res map[string]creds
+	if err := json.Unmarshal(dec[sz:len(dec)-sz/2], &res); err != nil {
 		return nil, err
 	}
 
 	return res, nil
 }
 
-func getDBases(file string) (map[string]interface{}, error) {
+func getDBases(file string) (*datas, error) {
 	raw, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
 
-	var res map[string]interface{}
+	var res datas
 	if err := json.Unmarshal(raw, &res); err != nil {
 		return nil, err
 	}
 
-	return res, nil
+	return &res, nil
 }
 
 func iif[T any](cond bool, vtrue, vfalse T) T {
