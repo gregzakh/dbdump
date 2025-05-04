@@ -19,17 +19,15 @@ type creds struct {
 	} `json:"#connection"`
 }
 
-type connection struct {
-	Name   string `json:"name"`
-	Config struct {
-		Host string `json:"host"`
-		Port string `json:"port"`
-		Data string `json:"database"`
-	} `json:"configuration"`
-}
-
 type datas struct {
-	Connections map[string]connection `json:"connections"`
+	Connections map[string]struct {
+		Name   string `json:"name"`
+		Config struct {
+			Host string `json:"host"`
+			Port string `json:"port"`
+			Data string `json:"database"`
+		} `json:"configuration"`
+	} `json:"connections"`
 }
 
 func getPathPoints() map[string][]string {
