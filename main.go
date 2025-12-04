@@ -1,64 +1,26 @@
 package main
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"log"
-	"os"
-	"path/filepath"
-	"runtime"
 )
 
-type creds struct {
-	Connection struct {
-		User     string `json:"user"`
-		Password string `json:"password"`
-	} `json:"#connection"`
-}
-
-type datas struct {
-	Connections map[string]struct {
-		Name   string `json:"name"`
-		Config struct {
-			Host string `json:"host"`
-			Port string `json:"port"`
-			Data string `json:"database"`
-		} `json:"configuration"`
-	} `json:"connections"`
-}
-
-func getPathPoints() map[string][]string {
-	return map[string][]string{
-		"chunks": []string{
-			"DBeaverData",
-			"workspace6",
-			"General",
-			".dbeaver",
-		},
-		"files": []string{
-			"credentials-config.json",
-			"data-sources.json",
-		},
-	}
-}
-
 func main() {
-	pair, err := getPair()
+	paths, err := getPaths(baseDir)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("getPaths() error: %v\n", err)
+		return
 	}
 
-	cred, err := decryptCredentials(pair[0])
+	cred, err := decryptCredentials(paths[0])
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("decryptCredentials() error: %v\n", err)
+		return
 	}
 
-	data, err := getDBases(pair[1])
+	data, err := getDBases(paths[1])
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("getDBases() error: %v\n", err)
+		return
 	}
 
 	for name, cons := range data.Connections {
@@ -67,81 +29,4 @@ func main() {
 			cred[name].Connection.User, cred[name].Connection.Password,
 		)
 	}
-}
-
-func decryptCredentials(file string) (map[string]creds, error) {
-	key, err := hex.DecodeString("babb4a9f774ab853c96c2d653dfe544a")
-	if err != nil {
-		return nil, err
-	}
-
-	sz := aes.BlockSize
-	iv := make([]byte, sz)
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	mode := cipher.NewCBCDecrypter(block, iv)
-	raw, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	dec := make([]byte, len(raw))
-	mode.CryptBlocks(dec, raw)
-	dec = dec[sz : len(dec)-iif(runtime.GOOS == "windows", sz/2, sz-1)]
-
-	var res map[string]creds
-	if err := json.Unmarshal(dec, &res); err != nil {
-		return nil, err
-	}
-
-	return res, nil
-}
-
-func getDBases(file string) (*datas, error) {
-	raw, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	var res datas
-	if err := json.Unmarshal(raw, &res); err != nil {
-		return nil, err
-	}
-
-	return &res, nil
-}
-
-func iif[T any](cond bool, vtrue, vfalse T) T {
-	if cond {
-		return vtrue
-	}
-
-	return vfalse
-}
-
-func getPair() ([2]string, error) {
-	base := iif(runtime.GOOS == "windows", os.Getenv("APPDATA"),
-		filepath.Join(os.Getenv("HOME"), ".local", "share"),
-	)
-
-	points := getPathPoints()
-	follow := append([]string{base}, points["chunks"]...)
-	target := filepath.Join(follow...)
-
-	pair := [2]string{
-		filepath.Join(target, points["files"][0]),
-		filepath.Join(target, points["files"][1]),
-	}
-
-	for _, file := range pair {
-		if _, err := os.Stat(file); os.IsNotExist(err) {
-			return pair, err
-		}
-	}
-
-	return pair, nil
 }
