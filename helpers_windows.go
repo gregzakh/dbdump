@@ -4,7 +4,6 @@ package main
 
 import (
 	"os"
-	"path/filepath"
 )
 
 var (
@@ -12,5 +11,5 @@ var (
 )
 
 func truncBytes(buf []byte, sz int) []byte {
-	return buf[sz : len(buf)-sz/2]
+	return buf[sz : len(buf)-2]
 }
