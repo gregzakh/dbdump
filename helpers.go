@@ -9,39 +9,40 @@ import (
 	"path/filepath"
 )
 
-func getPathPoints() map[string][]string {
-	return map[string][]string{
-		"chunks": []string{
+func newSearcher(parent string) *dbeaver {
+	return &dbeaver{
+		Parent: parent,
+		Chunks: []string{
 			"DBeaverData",
 			"workspace6",
 			"General",
 			".dbeaver",
 		},
-		"files": []string{
-			"credentials-config.json",
-			"data-sources.json",
+		Files: map[string]string{
+			"creds": "credentials-config.json",
+			"datas": "data-sources.json",
 		},
 	}
 }
 
-func getPaths(baseDir string) ([]string, error) {
-	points := getPathPoints()
-	target := filepath.Join(append([]string{baseDir}, points["chunks"]...)...)
+func (d *dbeaver) get(file string) (string, error) {
+	target := filepath.Join(append([]string{d.Parent}, d.Chunks...)...)
+	target = filepath.Join(target, d.Files[file])
 
-	var pair []string
-	for _, file := range points["files"] {
-		item := filepath.Join(target, file)
-		if _, err := os.Stat(item); os.IsNotExist(err) {
-			return nil, err
-		}
-		pair = append(pair, item)
+	if _, err := os.Stat(target); os.IsNotExist(err) {
+		return "", err
 	}
 
-	return pair, nil
+	return target, nil
 }
 
-func getDBases(file string) (*datas, error) {
-	raw, err := os.ReadFile(file)
+func (d *dbeaver) getDatas() (*datas, error) {
+	dat, err := d.get("datas")
+	if err != nil {
+		return nil, err
+	}
+
+	raw, err := os.ReadFile(dat)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +55,12 @@ func getDBases(file string) (*datas, error) {
 	return &res, nil
 }
 
-func decryptCredentials(file string) (map[string]creds, error) {
+func (d *dbeaver) decrypt() (map[string]creds, error) {
+	crd, err := d.get("creds")
+	if err != nil {
+		return nil, err
+	}
+
 	key, err := hex.DecodeString(keyer)
 	if err != nil {
 		return nil, err
@@ -69,7 +75,7 @@ func decryptCredentials(file string) (map[string]creds, error) {
 	}
 
 	mode := cipher.NewCBCDecrypter(block, iv)
-	raw, err := os.ReadFile(file)
+	raw, err := os.ReadFile(crd)
 	if err != nil {
 		return nil, err
 	}

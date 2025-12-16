@@ -4,6 +4,12 @@ const (
 	keyer = "babb4a9f774ab853c96c2d653dfe544a"
 )
 
+type dbeaver struct {
+	Parent string
+	Chunks []string
+	Files  map[string]string
+}
+
 type creds struct {
 	Connection struct {
 		User     string `json:"user"`

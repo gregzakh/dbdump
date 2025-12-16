@@ -12,5 +12,11 @@ var (
 )
 
 func truncBytes(buf []byte, sz int) []byte {
-	return buf[sz:len(buf)]
+	buf = buf[sz:len(buf)]
+
+	i := len(buf)
+	for ; i > 0 && buf[i-1] == 0x0F; i-- {
+	}
+
+	return buf[:i]
 }

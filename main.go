@@ -1,25 +1,29 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 )
 
 func main() {
-	paths, err := getPaths(baseDir)
+	altBase := flag.String("change-dir", "", "changes the default scan path")
+	flag.StringVar(altBase, "c", "", "alias for --change-dir")
+	flag.Parse()
+
+	if *altBase != "" {
+		baseDir = *altBase
+	}
+
+	searcher := newSearcher(baseDir)
+	cred, err := searcher.decrypt()
 	if err != nil {
-		fmt.Printf("getPaths() error: %v\n", err)
+		fmt.Printf("decrypt() error: %v\n", err)
 		return
 	}
 
-	cred, err := decryptCredentials(paths[0])
+	data, err := searcher.getDatas()
 	if err != nil {
-		fmt.Printf("decryptCredentials() error: %v\n", err)
-		return
-	}
-
-	data, err := getDBases(paths[1])
-	if err != nil {
-		fmt.Printf("getDBases() error: %v\n", err)
+		fmt.Printf("getDatas() error: %v\n", err)
 		return
 	}
 
